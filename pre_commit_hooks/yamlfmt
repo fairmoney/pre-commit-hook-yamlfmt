@@ -106,7 +106,6 @@ class Cli:
             )
 
         parser.add_argument(
-            "-n",
             "--preserve_null",
             action="store_true",
             help="whether to keep null values"
