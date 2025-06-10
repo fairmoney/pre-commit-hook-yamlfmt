@@ -9,7 +9,7 @@ setup(
     version='0.0.0',
 
     install_requires=[
-        'ruamel.yaml>=0.16.13',
+        'ruamel.yaml>=0.16.13,<0.18.10',
     ],
 
     scripts=[
