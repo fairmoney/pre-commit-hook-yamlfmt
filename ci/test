@@ -67,4 +67,32 @@ run diff ci/sort-after.txt "${TMP_FILE}"
 # If the diff fails, the temp file is still there to inspect.
 run rm -f "${TMP_FILE}"
 
+# Test sorting keys keeps anchors
+TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+run cp -f ci/anchors-before.txt "${TMP_FILE}"
+run pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 --sort_keys "${TMP_FILE}"
+run diff ci/anchors-after.txt "${TMP_FILE}"
+# If the diff fails, the temp file is still there to inspect.
+run rm -f "${TMP_FILE}"
+
+# Test sorting keys fails when a use of an anchor would move before its definition
+# Each case is <fixture>:<anchor the error must name>
+for CASE in reversed:base reversed-merge:b reversed-key:k; do
+    BEFORE="ci/anchors-${CASE%%:*}-before.txt"
+    ANCHOR="&${CASE##*:}"
+    TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+    ERR_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+    run cp -f "${BEFORE}" "${TMP_FILE}"
+    echo "[RUN] pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 --sort_keys ${TMP_FILE}" >&2
+    if pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 --sort_keys "${TMP_FILE}" 2>"${ERR_FILE}"; then
+        err "expected yamlfmt to fail on ${BEFORE}: an alias sorted before ${ANCHOR}"
+        exit 1
+    fi
+    echo
+    run grep -qF "anchor ${ANCHOR} is defined" "${ERR_FILE}"
+    run diff "${BEFORE}" "${TMP_FILE}"
+    # If the diff fails, the temp file is still there to inspect.
+    run rm -f "${TMP_FILE}" "${ERR_FILE}"
+done
+
 run pre-commit run --all-files --hook-stage manual
