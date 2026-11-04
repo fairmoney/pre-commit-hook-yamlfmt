@@ -1,0 +1,12 @@
+---
+# Sort the keys of mappings inside a list
+items:
+    - kind: plain
+      name: first
+    - kind: boxed
+      name: second
+      size: 2
+---
+# Sort the keys of a later document too
+first: 1
+second: 2

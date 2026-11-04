@@ -67,6 +67,14 @@ run diff ci/sort-after.txt "${TMP_FILE}"
 # If the diff fails, the temp file is still there to inspect.
 run rm -f "${TMP_FILE}"
 
+# Test sorting keys of maps in lists and in later documents
+TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+run cp -f ci/sort-nested-before.txt "${TMP_FILE}"
+run pre_commit_hooks/yamlfmt --mapping 4 --sequence 6 --offset 4 --sort_keys "${TMP_FILE}"
+run diff ci/sort-nested-after.txt "${TMP_FILE}"
+# If the diff fails, the temp file is still there to inspect.
+run rm -f "${TMP_FILE}"
+
 # Test sorting keys keeps anchors
 TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
 run cp -f ci/anchors-before.txt "${TMP_FILE}"
