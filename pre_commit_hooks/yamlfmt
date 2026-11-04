@@ -234,7 +234,7 @@ class Formatter:
             for k in sorted(own_keys):
                 this.move_to_end(k)
             cls.move_merge_first(this)
-            for _, value in cls.merge_entries(this):
+            for value in cls.merge_entries(this):
                 cls.sort_node(value, seen)
             for k in own_keys:
                 cls.sort_node(this[k], seen)
@@ -246,7 +246,7 @@ class Formatter:
     @staticmethod
     def merge_entries(this):
         """
-        Return the merge keys of a mapping as [(position, mapping)].
+        Return the mappings merged into a mapping.
         ruamel < 0.19 stores (position, mapping) tuples;
         ruamel >= 0.19 stores mappings in a list with a merge_pos attribute.
         """
@@ -254,9 +254,8 @@ class Formatter:
         if not merge:
             return []
         if isinstance(merge[0], tuple):
-            return list(merge)
-        pos = getattr(merge, "merge_pos", 0)
-        return [(pos, value) for value in merge]
+            return [value for _, value in merge]
+        return list(merge)
 
     @staticmethod
     def move_merge_first(this):
