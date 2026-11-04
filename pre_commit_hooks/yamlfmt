@@ -4,6 +4,7 @@
 import argparse
 import sys
 from ruamel.yaml import YAML  # pylint: disable=import-error
+from ruamel.yaml.emitter import Emitter  # pylint: disable=import-error
 
 DEFAULT_INDENT = {
     "mapping": 4,
@@ -125,6 +126,16 @@ class Cli:
         self.parser = parser
 
 
+class BraceAnchoredEmitter(Emitter):
+    """ Keep braces on an anchored one-entry mapping in a flow sequence """
+
+    def expect_flow_mapping(self, single=False, **kwargs):
+        """ Write [&a {k: v}], not [&a k: v], which anchors the key """
+        if self.event.anchor is not None:
+            single = False
+        super().expect_flow_mapping(single=single, **kwargs)
+
+
 class Formatter:
     """
     Reformat a yaml file with proper indentation.
@@ -132,6 +143,8 @@ class Formatter:
     """
     def __init__(self, **kwargs):
         yaml = YAML()
+        # The compact [&a k: v] form anchors the key, not the mapping.
+        yaml.Emitter = BraceAnchoredEmitter
         yaml.indent(
             mapping=kwargs.get("mapping", DEFAULT_INDENT["mapping"]),
             sequence=kwargs.get("sequence", DEFAULT_INDENT["sequence"]),
