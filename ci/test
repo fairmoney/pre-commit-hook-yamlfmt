@@ -103,4 +103,15 @@ run diff ci/tags.txt "${TMP_FILE}"
 # If the diff fails, the temp file is still there to inspect.
 run rm -f "${TMP_FILE}"
 
+# Test !!str tags survive formatting twice (ruamel < 0.18 writes them as quotes)
+TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+TMP_FILE2="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+run cp -f ci/str-tags.txt "${TMP_FILE}"
+run pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 "${TMP_FILE}"
+run cp -f "${TMP_FILE}" "${TMP_FILE2}"
+run pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 "${TMP_FILE2}"
+run diff "${TMP_FILE}" "${TMP_FILE2}"
+# If the diff fails, the temp files are still there to inspect.
+run rm -f "${TMP_FILE}" "${TMP_FILE2}"
+
 run pre-commit run --all-files --hook-stage manual

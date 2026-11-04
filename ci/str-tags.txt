@@ -1,0 +1,5 @@
+---
+# Explicit !!str tags are the same after formatting twice
+a: !!str 1
+b: !!str "2"
+c: [!!str 3]
