@@ -183,7 +183,7 @@ class Formatter:
         if not path:
             path = self.path
         if self.sort_keys:
-            _content = self.sort(self.content, path)
+            _content = self.sort(self.content)
         else:
             _content = self.content
         try:
@@ -200,24 +200,14 @@ class Formatter:
         sys.exit(1)
 
     @classmethod
-    def sort(cls, content, path=None):
+    def sort(cls, content):
         """
         Sort the keys of every mapping in place.
         Sorting in place keeps comments, anchors, aliases and merge keys.
-        Fail if sorting would move a use of an anchor before its definition.
+        An anchor is written where its object first appears in sorted order.
         """
         for doc in content:
-            before = cls.anchor_paths(doc)
             cls.sort_node(doc, set())
-            after = cls.anchor_paths(doc)
-            for key, (name, defined) in before.items():
-                if after[key][1] != defined:
-                    cls.fail(
-                        f"{path}: anchor &{name} is defined at {defined}"
-                        f" but after sorting keys its first use would be"
-                        f" {after[key][1]}; rename keys so the definition"
-                        f" sorts before its uses, or drop --sort_keys"
-                    )
         return content
 
     @classmethod
@@ -265,37 +255,6 @@ class Formatter:
             merge[:] = [(0, value) for _, value in merge]
         else:
             merge.merge_pos = 0
-
-    @classmethod
-    def anchor_paths(cls, this, path="", found=None):
-        """ Map each anchored object to the key path where it is written """
-        if found is None:
-            found = {}
-        anchor = getattr(this, "anchor", None)
-        if anchor is not None and anchor.value is not None:
-            if id(this) in found:
-                return found
-            found[id(this)] = (anchor.value, path or ".")
-        if isinstance(this, dict):
-            items = [(str(k), k, v) for k, v in this.non_merged_items()]
-            entries = cls.merge_entries(this)
-            merged = [value for _, value in entries]
-            if merged:
-                # ruamel writes the merge key at the first merge position
-                pos = entries[0][0]
-                items[pos:pos] = [
-                    ("<<" if len(merged) == 1 else f"<<[{idx}]", None, value)
-                    for idx, value in enumerate(merged)
-                ]
-            for key, key_obj, value in items:
-                child = f"{path}.{key}" if path else key
-                # A key can be an anchored scalar or an alias of one
-                cls.anchor_paths(key_obj, f"{child}#key", found)
-                cls.anchor_paths(value, child, found)
-        elif isinstance(this, list):
-            for idx, elem in enumerate(this):
-                cls.anchor_paths(elem, f"{path}[{idx}]", found)
-        return found
 
 
 if __name__ == "__main__":
