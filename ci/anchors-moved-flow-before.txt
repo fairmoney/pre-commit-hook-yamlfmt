@@ -2,3 +2,4 @@
 # The anchor moves into a flow sequence, where a one-key mapping keeps its braces
 zd: &d {x: 1}
 a: [*d]
+list: [b: 1]  # without an anchor it stays compact
