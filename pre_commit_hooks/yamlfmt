@@ -130,15 +130,27 @@ class Cli:
 RoundTripEmitter = getattr(emitter, "RoundTripEmitter", emitter.Emitter)
 
 
-class BraceAnchoredEmitter(RoundTripEmitter):
-    # pylint: disable=arguments-differ
-    """ Keep braces on an anchored one-entry mapping in a flow sequence """
+class FlowAnchorEmitter(RoundTripEmitter):
+    # pylint: disable=arguments-differ,comparison-with-callable
+    """
+    Keep braces on an anchored one-entry mapping in a flow sequence,
+    and a space between an alias key and its colon in a flow mapping.
+    """
 
     def expect_flow_mapping(self, single=False, **kwargs):
         """ Write [&a {k: v}], not [&a k: v], which anchors the key """
         if self.event.anchor is not None:
             single = False
         super().expect_flow_mapping(single=single, **kwargs)
+
+    def expect_alias(self):
+        """ Write {*k : v}, not {*k: v}, which does not parse """
+        # super() pops the state that says this alias is a flow mapping key.
+        flow_key = bool(self.states) and (
+            self.states[-1] == self.expect_flow_mapping_simple_value)
+        super().expect_alias()
+        if flow_key:
+            self.write_indicator(" ", False)
 
 
 class Formatter:
@@ -148,8 +160,8 @@ class Formatter:
     """
     def __init__(self, **kwargs):
         yaml = YAML()
-        # The compact [&a k: v] form anchors the key, not the mapping.
-        yaml.Emitter = BraceAnchoredEmitter
+        # Write anchors and aliases in flow style so they read back the same.
+        yaml.Emitter = FlowAnchorEmitter
         yaml.indent(
             mapping=kwargs.get("mapping", DEFAULT_INDENT["mapping"]),
             sequence=kwargs.get("sequence", DEFAULT_INDENT["sequence"]),

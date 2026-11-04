@@ -1,0 +1,5 @@
+---
+# The anchor moves out of a flow mapping key, which becomes an alias
+z: {&k aa: 1}
+a:
+  b: *k
