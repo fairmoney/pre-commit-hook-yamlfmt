@@ -4,7 +4,7 @@
 import argparse
 import sys
 from ruamel.yaml import YAML  # pylint: disable=import-error
-from ruamel.yaml.emitter import Emitter  # pylint: disable=import-error
+from ruamel.yaml import emitter  # pylint: disable=import-error
 
 DEFAULT_INDENT = {
     "mapping": 4,
@@ -126,7 +126,12 @@ class Cli:
         self.parser = parser
 
 
-class BraceAnchoredEmitter(Emitter):
+# ruamel >= 0.18 round-trips with RoundTripEmitter, which writes !!tags right.
+RoundTripEmitter = getattr(emitter, "RoundTripEmitter", emitter.Emitter)
+
+
+class BraceAnchoredEmitter(RoundTripEmitter):
+    # pylint: disable=arguments-differ
     """ Keep braces on an anchored one-entry mapping in a flow sequence """
 
     def expect_flow_mapping(self, single=False, **kwargs):

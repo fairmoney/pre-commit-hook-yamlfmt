@@ -93,4 +93,14 @@ run diff ci/anchors-moved-flow-after.txt "${TMP_FILE}"
 # If the diff fails, the temp file is still there to inspect.
 run rm -f "${TMP_FILE}"
 
+# Test explicit tags are kept, with and without sorting
+TMP_FILE="$(mktemp pre-commit-hook-yamlfmt-test.XXXXXXXXXXXXXXXXXXXX)"
+run cp -f ci/tags.txt "${TMP_FILE}"
+run pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 "${TMP_FILE}"
+run diff ci/tags.txt "${TMP_FILE}"
+run pre_commit_hooks/yamlfmt --mapping 2 --sequence 4 --offset 2 --sort_keys "${TMP_FILE}"
+run diff ci/tags.txt "${TMP_FILE}"
+# If the diff fails, the temp file is still there to inspect.
+run rm -f "${TMP_FILE}"
+
 run pre-commit run --all-files --hook-stage manual
