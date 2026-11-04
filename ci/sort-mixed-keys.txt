@@ -1,0 +1,4 @@
+---
+# Keys of different types do not sort, so the file is left as it was
+b: 1
+1: a
