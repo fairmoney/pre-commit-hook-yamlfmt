@@ -1,0 +1,9 @@
+---
+# Explicit tags are written back as they were
+a: !Ref x
+b: !!binary |
+  aGVsbG8=
+c: !custom
+  d: 1
+e: !<tag:example.com,2000:thing> 2
+f: [!Ref y]

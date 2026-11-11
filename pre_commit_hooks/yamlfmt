@@ -4,7 +4,7 @@
 import argparse
 import sys
 from ruamel.yaml import YAML  # pylint: disable=import-error
-from ruamel.yaml.comments import CommentedMap  # pylint: disable=import-error
+from ruamel.yaml import emitter  # pylint: disable=import-error
 
 DEFAULT_INDENT = {
     "mapping": 4,
@@ -114,7 +114,8 @@ class Cli:
             "-k",
             "--sort_keys",
             action="store_true",
-            help="whether to sort yaml keys"
+            help="whether to sort yaml keys; an anchor moves to its first"
+                 " use in sorted order"
             )
         parser.add_argument(
             "file_names",
@@ -126,6 +127,33 @@ class Cli:
         self.parser = parser
 
 
+# ruamel >= 0.18 round-trips with RoundTripEmitter, which writes !!tags right.
+RoundTripEmitter = getattr(emitter, "RoundTripEmitter", emitter.Emitter)
+
+
+class FlowAnchorEmitter(RoundTripEmitter):
+    # pylint: disable=arguments-differ,comparison-with-callable
+    """
+    Keep braces on an anchored one-entry mapping in a flow sequence,
+    and a space between an alias key and its colon in a flow mapping.
+    """
+
+    def expect_flow_mapping(self, single=False, **kwargs):
+        """ Write [&a {k: v}], not [&a k: v], which anchors the key """
+        if self.event.anchor is not None:
+            single = False
+        super().expect_flow_mapping(single=single, **kwargs)
+
+    def expect_alias(self):
+        """ Write {*k : v}, not {*k: v}, which does not parse """
+        # super() pops the state that says this alias is a flow mapping key.
+        flow_key = bool(self.states) and (
+            self.states[-1] == self.expect_flow_mapping_simple_value)
+        super().expect_alias()
+        if flow_key:
+            self.write_indicator(" ", False)
+
+
 class Formatter:
     """
     Reformat a yaml file with proper indentation.
@@ -133,6 +161,8 @@ class Formatter:
     """
     def __init__(self, **kwargs):
         yaml = YAML()
+        # Write anchors and aliases in flow style so they read back the same.
+        yaml.Emitter = FlowAnchorEmitter
         yaml.indent(
             mapping=kwargs.get("mapping", DEFAULT_INDENT["mapping"]),
             sequence=kwargs.get("sequence", DEFAULT_INDENT["sequence"]),
@@ -183,12 +213,12 @@ class Formatter:
         """ Write the file """
         if not path:
             path = self.path
+        if self.sort_keys:
+            _content = self.sort(self.content)
+        else:
+            _content = self.content
         try:
             with open(path, "w", encoding='utf-8') as stream:
-                if self.sort_keys:
-                    _content = self.sort(self.content)
-                else:
-                    _content = self.content
                 self.yaml.dump_all(_content, stream)
         except IOError:
             self.fail(f"Unable to write {path}")
@@ -196,23 +226,65 @@ class Formatter:
     @staticmethod
     def fail(msg):
         """ Abort """
-        sys.stderr.write(msg)
+        sys.stdout.write("  Failed\n")
+        sys.stderr.write(f"{msg}\n")
         sys.exit(1)
 
     @classmethod
-    def sort(cls, this):
-        """ Sort a content dictionary and keep comments """
+    def sort(cls, content):
+        """
+        Sort the keys of every mapping in place.
+        Sorting in place keeps comments, anchors, aliases and merge keys.
+        An anchor is written where its object first appears in sorted order.
+        """
+        for doc in content:
+            cls.sort_node(doc, set())
+        return content
+
+    @classmethod
+    def sort_node(cls, this, seen):
+        """ Sort a mapping in place, once per object, and recurse """
+        if id(this) in seen:
+            return
         if isinstance(this, dict):
-            res = CommentedMap()
-            comment = this.ca
-            for k in sorted(this.keys()):
-                res[k] = cls.sort(this[k])
-            res._yaml_comment = comment  # pylint: disable=protected-access
-            return res
-        if isinstance(this, list):
-            for idx, elem in enumerate(this):
-                this[idx] = cls.sort(elem)
-        return this
+            seen.add(id(this))
+            own_keys = [k for k, _ in this.non_merged_items()]
+            for k in sorted(own_keys):
+                this.move_to_end(k)
+            cls.move_merge_first(this)
+            for value in cls.merge_entries(this):
+                cls.sort_node(value, seen)
+            for k in own_keys:
+                cls.sort_node(this[k], seen)
+        elif isinstance(this, list):
+            seen.add(id(this))
+            for elem in this:
+                cls.sort_node(elem, seen)
+
+    @staticmethod
+    def merge_entries(this):
+        """
+        Return the mappings merged into a mapping.
+        ruamel < 0.19 stores (position, mapping) tuples;
+        ruamel >= 0.19 stores mappings in a list with a merge_pos attribute.
+        """
+        merge = this.merge
+        if not merge:
+            return []
+        if isinstance(merge[0], tuple):
+            return [value for _, value in merge]
+        return list(merge)
+
+    @staticmethod
+    def move_merge_first(this):
+        """ Write the merge key first instead of at its original position """
+        merge = this.merge
+        if not merge:
+            return
+        if isinstance(merge[0], tuple):
+            merge[:] = [(0, value) for _, value in merge]
+        else:
+            merge.merge_pos = 0
 
 
 if __name__ == "__main__":

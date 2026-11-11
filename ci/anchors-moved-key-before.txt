@@ -1,0 +1,4 @@
+---
+# The anchor is defined on a value and used as a key that sorts before it
+b: &k name
+a: {*k : 1, x: 2}

@@ -1,0 +1,43 @@
+---
+# Anchors, aliases and merge keys survive sorting
+defaults:
+  alpha: &alpha
+    endpoint:
+      events: &events
+        - start
+  beta: &beta
+    endpoint:
+      events: *events
+      limits:
+        cpu: 1  # keep this comment
+keys:
+  a: &k name
+  b:
+    *k : 1
+    z: 2
+services:
+  five:
+    settings:
+      <<: {x: 2, y: 1}
+      zz: 0
+  four:
+    settings:
+      <<: &inline
+        x: 2
+        y: 1
+      bb: *inline
+      mm: 0
+      zz: *inline
+  one:
+    settings: *beta
+  three:
+    settings:
+      <<: *alpha
+      zeta: 1
+  two:
+    settings:
+      <<: [*beta, *alpha]
+      active: true
+      extra:
+        events:
+          - stop

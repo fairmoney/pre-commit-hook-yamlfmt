@@ -1,0 +1,7 @@
+---
+# The anchor is defined under an own key but used in the merge value, which is written first
+base:
+  <<:
+    j: &b
+      k: 1
+  b: *b

@@ -1,0 +1,10 @@
+---
+# The anchor is defined under a key that sorts after its use
+arepos:
+  one:
+    settings: &base
+      endpoint:
+        events:
+          - stop
+zdefs:
+  base: *base
