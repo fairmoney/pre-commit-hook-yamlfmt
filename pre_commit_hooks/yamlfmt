@@ -114,7 +114,8 @@ class Cli:
             "-k",
             "--sort_keys",
             action="store_true",
-            help="whether to sort yaml keys"
+            help="whether to sort yaml keys; an anchor moves to its first"
+                 " use in sorted order"
             )
         parser.add_argument(
             "file_names",
